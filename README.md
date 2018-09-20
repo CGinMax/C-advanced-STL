@@ -38,6 +38,7 @@ int var = 20; //普通的变量
 fun1(const int rad); //计算以rad为半径的圆的面积
 fun2(int var); //参数不是常量的函数
     
+    
 constexpr int const_square = fun1(rad); //等号的右边是常量表达式，正确
 constexpr int square = fun2(var); //错误，fun(var)不是常量表达式
 constexpr int nonconst_square = fun1(var); //错误，var不是常量，fun1就不是常量表达式
@@ -48,3 +49,46 @@ constexpr int nonconst_square = fun1(var); //错误，var不是常量，fun1就�
 
 ` constexpr double square(double r) { return x * x; } `
     
+## **3.把vector和string数据传给旧API**
+
+因为vector跟数组在内存的存储上都是通过连续排布的，所以访问vector对象的第一个元素的地址，相当于访问该vector对象。因此我们可以用一个指向vector对象的第一个元素来表示指向整个vector对象，有
+
+```
+std::vector<int> v;
+void doSomething(const int* pInt, size_t numInt);
+doSomething(&v[0], v.size());
+```
+
+如果避免出现空vector对象，导致指针指向错误，则加个判断条件
+
+```if(!v.empty()) { doSomething(&v[0],v.size()); }```
+
+string对象利用旧API的方法
+```
+std::string s;
+doSomething(const char* pString);
+doSomething(s.c_str());
+```
+
+### **用C API初始化vector 等容器**
+```
+size_t InitContainer(char* pContainer, size_t containerSize)
+std::vector<char> v();//创建一个vector
+v.resize(InitContainer(&v[0], v.size()));//初始化v中的大小
+
+//通过该方法初始化其他容器
+std::string s(v.begin(), v.end());
+std::deque<char> d(v.begin(), v.end());
+std::list<char> l(v.begin(), v.end());
+std::set<char> s(v.begin(), v.end());
+```
+
+## **4.使用swap技巧除去多余的容器容量**
+通过利用临时变量在程序结束后被析构掉的特点，将临时变量做为交换swap对象
+
+```
+class Contestant{...};
+std::vector<Contestant> contestants;
+//临时变量调用拷贝构造，拷贝contestants中，它只需要为想要拷贝的元素分配所需要的内存。所以它的内存会比原先的contestants少。
+std::vector<Contestant>(contestants).swap(contestants);//swap之后，减去了不必要的空间
+```
